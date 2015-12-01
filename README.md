@@ -14,7 +14,7 @@ emcc blake/blake.c byteio/byteio.c main.c -o main.html
 
 Subrepository   | [Added] As |                Revision
 ----------------|------------|-----------------------------------------
-shelby3/byteio  | /byteio    | 0efcdb9515fd453fbeef6d698280508a175f3413
-shelby3/cmacros | /cmacros   | 5915517379ab3e412843f6cf1ba7efd6fb14c565
+shelby3/byteio  | /byteio    | 3340d7315979a74fa01192b97cd5c7e667c6b114
+shelby3/cmacros | /cmacros   | bd4ea5bcb796c38e90f3f52b6552696667401e8d
 
 [Added]: https://gist.github.com/shelby3/f69c969ecaa3ecfbe579#subrepositories
