@@ -262,7 +262,7 @@ blake2s_init(blake2s_state* state, const uint8 len/*final hash length 1-32 (8-bi
 }
 
 blake2s_state* EXPORT
-blake2s(blake2s_state* state, const uint32* in, size_t bytes/*input length in (8-bit) bytes*/, const bool final) {
+blake2s(blake2s_state*const state, const uint32* in, size_t bytes/*input length in (8-bit) bytes*/, const bool final, const bool padded/*'in' padded to 64 bytes*/) {
   if (~F[0] == 0) return NULL;                                  // Error: already final?
 
   if (state->bytes > 0) {
@@ -310,11 +310,13 @@ blake2s(blake2s_state* state, const uint32* in, size_t bytes/*input length in (8
     F[0] = ~F[0];
     if (bytes < BLK_SZ) {
       if (bytes == 0 && (T[0] != 0 || T[1] != 0)) return NULL;  // Error: nothing to process?
-      // Pad with trailing zeros
-      memset((uint8*)state->queued + bytes, 0, (BLK_SZ - bytes) * CHAR_BIT/8); // [CHAR_BIT]
-      if (in != state->queued) {
-        memcpy(state->queued, in, bytes * CHAR_BIT/8);                         // [CHAR_BIT]
-        in = state->queued;
+      if (!padded) {
+        // Pad with trailing zeros
+        memset((uint8*)state->queued + bytes, 0, (BLK_SZ - bytes) * CHAR_BIT/8); // [CHAR_BIT]
+        if (in != state->queued) {
+          memcpy(state->queued, in, bytes * CHAR_BIT/8);                         // [CHAR_BIT]
+          in = state->queued;
+        }
       }
     }
     T[0] += bytes;
@@ -412,7 +414,7 @@ blake2b_init(blake2b_state* state, const uint8 len/*final hash length 1-64 (8-bi
 }
 
 blake2b_state* // do not EXPORT so EMSCRIPTEN will discard (if not invoked from a C/C++ or specifically exported by the build), since 64-bit arithmetic is emulated
-blake2b(blake2b_state* state, const uint64* in, size_t bytes/*input length in (8-bit) bytes*/, const bool final) {
+blake2b(blake2b_state*const state, const uint64* in, size_t bytes/*input length in (8-bit) bytes*/, const bool final, const bool padded/*'in' padded to 64 bytes*/) {
   if (~F[0] == 0) return NULL;                                  // Error: already final?
 
   if (state->bytes > 0) {
@@ -460,11 +462,13 @@ blake2b(blake2b_state* state, const uint64* in, size_t bytes/*input length in (8
     F[0] = ~F[0];
     if (bytes < BLK_SZ) {
       if (bytes == 0 && (T[0] != 0 || T[1] != 0)) return NULL;  // Error: nothing to process?
-      // Pad with trailing zeros
-      memset((uint8*)state->queued + bytes, 0, (BLK_SZ - bytes) * CHAR_BIT/8); // [CHAR_BIT]
-      if (in != state->queued) {
-        memcpy(state->queued, in, bytes * CHAR_BIT/8);                         // [CHAR_BIT]
-        in = state->queued;
+      if (!padded) {
+        // Pad with trailing zeros
+        memset((uint8*)state->queued + bytes, 0, (BLK_SZ - bytes) * CHAR_BIT/8); // [CHAR_BIT]
+        if (in != state->queued) {
+          memcpy(state->queued, in, bytes * CHAR_BIT/8);                         // [CHAR_BIT]
+          in = state->queued;
+        }
       }
     }
     T[0] += bytes;

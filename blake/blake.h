@@ -35,7 +35,8 @@ A prospectively faster 128-bit downscaled variant of BLAKE2s was not invented be
 #include "../cmacros/export.h"
 
 typedef struct {
-	uint32 h[8];       // hash
+  uint32 h[8];       // hash
+  uint32 padding[8]; // unused padding to SIZEOF(h)*2 from &h, for optional use by applications
 	uint32 t[2];       // total (8-bit) bytes processed (value embedded in each block as processed); carry overflow of t[0] stored in t[1]
 	uint32 f[2];       // ~f[0] is 0 for final block processed (value embedded in each block as processed), otherwise 0
   uint32 queued[16]; // buffer of queued input
@@ -44,6 +45,7 @@ typedef struct {
 
 typedef struct {
   uint64 h[8];
+  uint64 padding[8];
   uint64 t[2];
   uint64 f[2];
   uint64 queued[16];
@@ -79,10 +81,10 @@ In non-convoluted, less abstruse english, to avoid these errors respectively:
 */
 
 blake2s_state* EXPORT
-blake2s(blake2s_state* state, const uint32* in, size_t bytes/*input length in (8-bit) bytes*/, const bool final);
+blake2s(blake2s_state*const state, const uint32* in, size_t bytes/*input length in (8-bit) bytes*/, const bool final, const bool padded/*'in' padded to 64 bytes*/);
 
 blake2b_state*
-blake2b(blake2b_state* state, const uint64* in, size_t bytes/*input length in (8-bit) bytes*/, const bool final);
+blake2b(blake2b_state*const state, const uint64* in, size_t bytes/*input length in (8-bit) bytes*/, const bool final, const bool padded/*'in' padded to 64 bytes*/);
 
 #include "../cmacros/variadic.h"
 
@@ -91,18 +93,20 @@ blake2b(blake2b_state* state, const uint64* in, size_t bytes/*input length in (8
 #define   blake2s_init_4(a, b, c, d) a,  b,    c, d
 #define   blake2s_init(...) VARIADIC(blake2s_init, NUMARG4(__VA_ARGS__), __VA_ARGS__)
 
-#define   blake2s_3(a, b, c   ) a,  b, c, true
-#define   blake2s_4(a, b, c, d) a,  b, c,    d
-#define   blake2s(...) VARIADIC(blake2s, NUMARG4(__VA_ARGS__), __VA_ARGS__)
+#define   blake2s_3(a, b, c      ) a,  b, c, true, false
+#define   blake2s_4(a, b, c, d   ) a,  b, c,    d, false
+#define   blake2s_5(a, b, c, d, e) a,  b, c,    d,     e
+#define   blake2s(...) VARIADIC(blake2s, NUMARG5(__VA_ARGS__), __VA_ARGS__)
 
 #define   blake2b_init_1(a         ) a, 64, NULL, 0
 #define   blake2b_init_2(a, b      ) a,  b, NULL, 0
 #define   blake2b_init_4(a, b, c, d) a,  b,    c, d
 #define   blake2b_init(...) VARIADIC(blake2b_init, NUMARG4(__VA_ARGS__), __VA_ARGS__)
 
-#define   blake2b_3(a, b, c   ) a,  b, c, true
-#define   blake2b_4(a, b, c, d) a,  b, c,    d
-#define   blake2b(...) VARIADIC(blake2b, NUMARG4(__VA_ARGS__), __VA_ARGS__)
+#define   blake2b_3(a, b, c      ) a,  b, c, true, false
+#define   blake2b_4(a, b, c, d   ) a,  b, c,    d, false
+#define   blake2b_5(a, b, c, d, e) a,  b, c,    d,     e
+#define   blake2b(...) VARIADIC(blake2b, NUMARG5(__VA_ARGS__), __VA_ARGS__)
 
 #define blake2_init(a, ...) _Generic((a),                                                                                          \
                                      blake2s_state*: blake2s_init,                                                                 \
@@ -110,7 +114,7 @@ blake2b(blake2b_state* state, const uint64* in, size_t bytes/*input length in (8
 
 #define      blake2(a, ...) _Generic((a),                                                                                          \
                                      blake2s_state*:      blake2s,                                                                 \
-                                     blake2b_state*:      blake2b)(VARIADIC2(blake2s,      NUMARG3(a, __VA_ARGS__), a, __VA_ARGS__))
+                                     blake2b_state*:      blake2b)(VARIADIC2(blake2s,      NUMARG4(a, __VA_ARGS__), a, __VA_ARGS__))
 
 /*
 BLAKE requires conversions to and from little-endian byte strings for portable I/O.
