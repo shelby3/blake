@@ -153,6 +153,82 @@ blake2b_selftest() {
 }
 /****************************** END UNIT TESTS *******************************/
 
+
+void EXPORT
+blake2s_nested(uint32 n/*number of invocations*/, uint32*const out, const uint32* in,
+               size_t bytes/*input/output length 1-32 (8-bit) bytes*/,
+               const uint32* key, const uint8 keylen/*key length 0-32 (8-bit) bytes*/) {
+  // Alternate between two hash states, to use the prior output as an input without copying
+  blake2s_state state1, state2;
+  if (n >= 1) {
+    // Pad hash outputs with 0
+    memset((uint8*)(&state1.h) + bytes, 0, (SIZEOF(state1.h) + SIZEOF(state1.padding)) * CHAR_BIT/8 - bytes); // [CHAR_BIT]
+    if (n > 1)
+      memset(&state2.padding, 0, SIZEOF(state2.padding) * CHAR_BIT/8);                                        // [CHAR_BIT]
+    // Copy input to a hash ouput because this is more efficient than if blake2() does the paddding
+    memcpy(&state1.h, in, bytes);
+    in = (const uint32*)&state1.h;
+    blake2s_state* state = &state2;
+    blake2_init(state, bytes, key, keylen);
+    blake2(state, in, bytes, /*final*/true, /*zero padded*/true);
+    while (--n > 0) {
+      in = (const uint32*)&state2.h;
+      memset((uint8*)(&state2.h) + bytes, 0, SIZEOF(state2.h) * CHAR_BIT/8 - bytes);   // Pad hash outputs with 0
+      state = &state1;
+      blake2_init(state, bytes);
+      blake2(state, in, bytes, /*final*/true, /*zero padded*/true);
+      if (--n > 0) {
+        in = (const uint32*)&state1.h;
+        memset((uint8*)(&state1.h) + bytes, 0, SIZEOF(state1.h) * CHAR_BIT/8 - bytes); // Pad hash outputs with 0
+        state = &state2;
+        blake2_init(state, bytes);
+        blake2(state, in, bytes, /*final*/true, /*zero padded*/true);
+      }
+    }
+    memcpy(out, state->h, bytes);
+  } else if (in != out) {
+    memcpy(out, in, bytes);
+  }
+}
+
+void // do not EXPORT so EMSCRIPTEN will discard (if not invoked from a C/C++ or specifically exported by the build), because 64-bit arithmetic is emulated
+blake2b_nested(uint64 n/*number of invocations*/, uint64*const out, const uint64* in,
+               size_t bytes/*input/output length 1-64 (8-bit) bytes*/,
+               const uint64* key, const uint8 keylen/*key length 0-64 (8-bit) bytes*/) {
+  // Alternate between two hash states, to use the prior output as an input without copying
+  blake2b_state state1, state2;
+  if (n >= 1) {
+    // Pad hash outputs with 0
+    memset((uint8*)(&state1.h) + bytes, 0, (SIZEOF(state1.h) + SIZEOF(state1.padding)) * CHAR_BIT/8 - bytes); // [CHAR_BIT]
+    if (n > 1)
+      memset(&state2.padding, 0, SIZEOF(state2.padding) * CHAR_BIT/8);                                        // [CHAR_BIT]
+    // Copy input to a hash ouput because this is more efficient than if blake2() does the paddding
+    memcpy(&state1.h, in, bytes);
+    in = (const uint64*)&state1.h;
+    blake2b_state* state = &state2;
+    blake2_init(state, bytes, key, keylen);
+    blake2(state, in, bytes, /*final*/true, /*zero padded*/true);
+    while (--n > 0) {
+      in = (const uint64*)&state2.h;
+      memset((uint8*)(&state2.h) + bytes, 0, SIZEOF(state2.h) * CHAR_BIT/8 - bytes);   // Pad hash outputs with 0
+      state = &state1;
+      blake2_init(state, bytes);
+      blake2(state, in, bytes, /*final*/true, /*zero padded*/true);
+      if (--n > 0) {
+        in = (const uint64*)&state1.h;
+        memset((uint8*)(&state1.h) + bytes, 0, SIZEOF(state1.h) * CHAR_BIT/8 - bytes); // Pad hash outputs with 0
+        state = &state2;
+        blake2_init(state, bytes);
+        blake2(state, in, bytes, /*final*/true, /*zero padded*/true);
+      }
+    }
+    memcpy(out, state->h, bytes);
+  } else if (in != out) {
+    memcpy(out, in, bytes);
+  }
+}
+
+
 #undef blake2s_init
 #undef blake2s
 #undef blake2b_init
@@ -384,7 +460,7 @@ b2b_block(blake2b_state*const state, const uint64 blk[16]) {
   H[7] ^= (v7 ^ v15);
 }
 
-blake2b_state* // do not EXPORT so EMSCRIPTEN will discard (if not invoked from a C/C++ or specifically exported by the build), since 64-bit arithmetic is emulated
+blake2b_state* // do not EXPORT so EMSCRIPTEN will discard (if not invoked from a C/C++ or specifically exported by the build), because 64-bit arithmetic is emulated
 blake2b_init(blake2b_state* state, const uint8 len/*final hash length 1-64 (8-bit) bytes*/, const uint64* key, const uint8 keylen/*key length 0-64 (8-bit) bytes*/) {
   if (len == 0 || len > BLK_SZ/2 || keylen > BLK_SZ/2) return NULL;
 
@@ -413,8 +489,8 @@ blake2b_init(blake2b_state* state, const uint8 len/*final hash length 1-64 (8-bi
   return state;
 }
 
-blake2b_state* // do not EXPORT so EMSCRIPTEN will discard (if not invoked from a C/C++ or specifically exported by the build), since 64-bit arithmetic is emulated
-blake2b(blake2b_state*const state, const uint64* in, size_t bytes/*input length in (8-bit) bytes*/, const bool final, const bool padded/*'in' padded to 64 bytes*/) {
+blake2b_state* // do not EXPORT so EMSCRIPTEN will discard (if not invoked from a C/C++ or specifically exported by the build), because 64-bit arithmetic is emulated
+blake2b(blake2b_state*const state, const uint64* in, size_t bytes/*input length in (8-bit) bytes*/, const bool final, const bool padded/*'in' padded to 128 bytes*/) {
   if (~F[0] == 0) return NULL;                                  // Error: already final?
 
   if (state->bytes > 0) {

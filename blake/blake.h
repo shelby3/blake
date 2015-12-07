@@ -84,37 +84,67 @@ blake2s_state* EXPORT
 blake2s(blake2s_state*const state, const uint32* in, size_t bytes/*input length in (8-bit) bytes*/, const bool final, const bool padded/*'in' padded to 64 bytes*/);
 
 blake2b_state*
-blake2b(blake2b_state*const state, const uint64* in, size_t bytes/*input length in (8-bit) bytes*/, const bool final, const bool padded/*'in' padded to 64 bytes*/);
+blake2b(blake2b_state*const state, const uint64* in, size_t bytes/*input length in (8-bit) bytes*/, const bool final, const bool padded/*'in' padded to 128 bytes*/);
 
 #include "../cmacros/variadic.h"
 
-#define   blake2s_init_1(a         ) a, 32, NULL, 0
-#define   blake2s_init_2(a, b      ) a,  b, NULL, 0
-#define   blake2s_init_4(a, b, c, d) a,  b,    c, d
-#define   blake2s_init(...) VARIADIC(blake2s_init, NUMARG4(__VA_ARGS__), __VA_ARGS__)
+#define blake2s_init_1(a         ) a, 32, NULL, 0
+#define blake2s_init_2(a, b      ) a,  b, NULL, 0
+#define blake2s_init_4(a, b, c, d) a,  b,    c, d
+#define blake2s_init(...) VARIADIC(blake2s_init, NUMARG4(__VA_ARGS__), __VA_ARGS__)
 
-#define   blake2s_3(a, b, c      ) a,  b, c, true, false
-#define   blake2s_4(a, b, c, d   ) a,  b, c,    d, false
-#define   blake2s_5(a, b, c, d, e) a,  b, c,    d,     e
-#define   blake2s(...) VARIADIC(blake2s, NUMARG5(__VA_ARGS__), __VA_ARGS__)
+#define blake2s_3(a, b, c      ) a,  b, c, true, false
+#define blake2s_4(a, b, c, d   ) a,  b, c,    d, false
+#define blake2s_5(a, b, c, d, e) a,  b, c,    d,     e
+#define blake2s(...) VARIADIC(blake2s, NUMARG5(__VA_ARGS__), __VA_ARGS__)
 
-#define   blake2b_init_1(a         ) a, 64, NULL, 0
-#define   blake2b_init_2(a, b      ) a,  b, NULL, 0
-#define   blake2b_init_4(a, b, c, d) a,  b,    c, d
-#define   blake2b_init(...) VARIADIC(blake2b_init, NUMARG4(__VA_ARGS__), __VA_ARGS__)
+#define blake2b_init_1(a         ) a, 64, NULL, 0
+#define blake2b_init_2(a, b      ) a,  b, NULL, 0
+#define blake2b_init_4(a, b, c, d) a,  b,    c, d
+#define blake2b_init(...) VARIADIC(blake2b_init, NUMARG4(__VA_ARGS__), __VA_ARGS__)
 
-#define   blake2b_3(a, b, c      ) a,  b, c, true, false
-#define   blake2b_4(a, b, c, d   ) a,  b, c,    d, false
-#define   blake2b_5(a, b, c, d, e) a,  b, c,    d,     e
-#define   blake2b(...) VARIADIC(blake2b, NUMARG5(__VA_ARGS__), __VA_ARGS__)
+#define blake2b_3(a, b, c      ) a,  b, c, true, false
+#define blake2b_4(a, b, c, d   ) a,  b, c,    d, false
+#define blake2b_5(a, b, c, d, e) a,  b, c,    d,     e
+#define blake2b(...) VARIADIC(blake2b, NUMARG5(__VA_ARGS__), __VA_ARGS__)
 
 #define blake2_init(a, ...) _Generic((a),                                                                                          \
                                      blake2s_state*: blake2s_init,                                                                 \
-                                     blake2b_state*: blake2b_init)(VARIADIC2(blake2s_init, NUMARG3(a, __VA_ARGS__), a, __VA_ARGS__))
+                                     blake2b_state*: blake2b_init)(VARIADIC2(blake2s_init, NUMARG4(a, __VA_ARGS__), a, __VA_ARGS__))
 
 #define      blake2(a, ...) _Generic((a),                                                                                          \
                                      blake2s_state*:      blake2s,                                                                 \
-                                     blake2b_state*:      blake2b)(VARIADIC2(blake2s,      NUMARG4(a, __VA_ARGS__), a, __VA_ARGS__))
+                                     blake2b_state*:      blake2b)(VARIADIC2(blake2s,      NUMARG5(a, __VA_ARGS__), a, __VA_ARGS__))
+
+/*
+Functions for nesting 1 or more invocations of the hash function H(x), e.g. a
+nesting of 3 is H(H(H(x))).
+*/
+
+void EXPORT
+blake2s_nested(uint32 n/*number of invocations*/, uint32*const out, const uint32* in,
+               size_t bytes/*input/output length 1-32 (8-bit) bytes*/,
+               const uint32* key, const uint8 keylen/*key length 0-32 (8-bit) bytes*/);
+
+void
+blake2b_nested(uint64 n/*number of invocations*/, uint64*const out, const uint64* in,
+               size_t bytes/*input/output length 1-64 (8-bit) bytes*/,
+               const uint64* key, const uint8 keylen/*key length 0-64 (8-bit) bytes*/);
+
+#define blake2s_nested_3(a, b, c         ) a, b, c, 32, NULL, 0
+#define blake2s_nested_4(a, b, c, d      ) a, b, c,  d, NULL, 0
+#define blake2s_nested_6(a, b, c, d, e, f) a, b, c,  d,    e, f
+#define blake2s_nested(...) VARIADIC(blake2s_nested, NUMARG6(__VA_ARGS__), __VA_ARGS__)
+
+#define blake2b_nested_3(a, b, c         ) a, b, c, 64, NULL, 0
+#define blake2b_nested_4(a, b, c, d      ) a, b, c,  d, NULL, 0
+#define blake2b_nested_6(a, b, c, d, e, f) a, b, c,  d,    e, f
+#define blake2b_nested(...) VARIADIC(blake2b_nested, NUMARG6(__VA_ARGS__), __VA_ARGS__)
+
+#define blake2_nested(a, ...) _Generic((a),                                                                                        \
+                                       uint32_t: blake2s_nested,                                                                   \
+                                       uint64_t: blake2b_nested)(VARIADIC2(blake2s_nested, NUMARG6(a, __VA_ARGS__), a, __VA_ARGS__))
+
 
 /*
 BLAKE requires conversions to and from little-endian byte strings for portable I/O.
